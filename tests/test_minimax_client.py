@@ -30,7 +30,7 @@ class TestMiniMaxClient:
         assert self.client.is_reasoning_model(self.llm_config) is True
 
         # Test with different models
-        for model_name in ["MiniMax-M2.1", "MiniMax-M2.1-lightning", "MiniMax-M2"]:
+        for model_name in ["MiniMax-M2.7", "MiniMax-M2.7-highspeed", "MiniMax-M2.5", "MiniMax-M2.1", "MiniMax-M2.1-lightning", "MiniMax-M2"]:
             config = LLMConfig(
                 model=model_name,
                 model_endpoint_type="minimax",

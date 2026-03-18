@@ -15,6 +15,24 @@ logger = get_logger(__name__)
 # https://platform.minimax.io/docs/guides/models-intro
 MODEL_LIST = [
     {
+        "name": "MiniMax-M2.7",
+        "context_window": 200000,
+        "max_output": 128000,
+        "description": "Latest flagship model with enhanced reasoning and coding",
+    },
+    {
+        "name": "MiniMax-M2.7-highspeed",
+        "context_window": 200000,
+        "max_output": 128000,
+        "description": "High-speed version of M2.7 for low-latency scenarios",
+    },
+    {
+        "name": "MiniMax-M2.5",
+        "context_window": 200000,
+        "max_output": 128000,
+        "description": "Peak Performance. Ultimate Value. Master the Complex",
+    },
+    {
         "name": "MiniMax-M2.1",
         "context_window": 200000,
         "max_output": 128000,
@@ -31,12 +49,6 @@ MODEL_LIST = [
         "context_window": 200000,
         "max_output": 128000,
         "description": "Agentic capabilities, advanced reasoning",
-    },
-    {
-        "name": "MiniMax-M2.5",
-        "context_window": 200000,
-        "max_output": 128000,
-        "description": "Peak Performance. Ultimate Value. Master the Complex",
     },
 ]
 
