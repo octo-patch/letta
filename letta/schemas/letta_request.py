@@ -150,6 +150,8 @@ class LettaRequest(BaseModel):
             raise ValueError("Cannot specify both 'input' and 'messages'. Use one or the other.")
         if self.input is None and self.messages is None:
             raise ValueError("Must specify either 'input' or 'messages'.")
+        if self.messages is not None and len(self.messages) == 0:
+            raise ValueError("'messages' must not be empty.")
 
         # Convert input to messages format
         # input can be either a string or List[LettaMessageContentUnion]
