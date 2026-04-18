@@ -202,7 +202,7 @@ class ToolUpdate(LettaBase):
     metadata_: Optional[Dict[str, Any]] = Field(None, description="A dictionary of additional metadata for the tool.")
     default_requires_approval: Optional[bool] = Field(None, description="Whether or not to require approval before executing this tool.")
     enable_parallel_execution: Optional[bool] = Field(
-        False, description="If set to True, then this tool will potentially be executed concurrently with other tools. Default False."
+        None, description="If set to True, then this tool will potentially be executed concurrently with other tools."
     )
     # name: Optional[str] = Field(None, description="The name of the tool (must match the JSON schema name and source code function name).")
 
