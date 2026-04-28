@@ -89,7 +89,7 @@ def tool_return_to_text(func_response: Optional[Union[str, List]]) -> Optional[s
     if isinstance(func_response, str):
         return func_response
 
-    text_parts = [text for part in func_response if (text := _get_text_from_part(part))]
+    text_parts = [text for part in func_response if (text := _get_text_from_part(part)) is not None]
     image_count = sum(
         1 for part in func_response if isinstance(part, ImageContent) or (isinstance(part, dict) and part.get("type") == "image")
     )
@@ -98,7 +98,7 @@ def tool_return_to_text(func_response: Optional[Union[str, List]]) -> Optional[s
     if image_count > 0:
         placeholder = "[Image omitted]" if image_count == 1 else f"[{image_count} images omitted]"
         result = (result + " " + placeholder) if result else placeholder
-    return result if result else None
+    return result
 
 
 def add_inner_thoughts_to_tool_call(
