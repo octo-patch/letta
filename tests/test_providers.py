@@ -144,25 +144,32 @@ async def test_minimax():
     provider = MiniMaxProvider(name="minimax")
     models = await provider.list_llm_models_async()
 
-    # Should have exactly 3 models: M2.1, M2.1-lightning, M2, M2.5, M2.7
-    assert len(models) == 5
+    # Should have exactly 3 models: M3, M2.7, M2.7-highspeed
+    assert len(models) == 3
 
     # Verify model properties
     model_names = {m.model for m in models}
-    assert "MiniMax-M2.1" in model_names
-    assert "MiniMax-M2.1-lightning" in model_names
-    assert "MiniMax-M2" in model_names
-    assert "MiniMax-M2.5" in model_names
+    assert "MiniMax-M3" in model_names
+    assert "MiniMax-M2.7" in model_names
+    assert "MiniMax-M2.7-highspeed" in model_names
+
+    # M3 should be the default (first in the list)
+    assert models[0].model == "MiniMax-M3"
 
     # Verify handle format
     for model in models:
         assert model.handle == f"{provider.name}/{model.model}"
-        # All MiniMax models have 200K context window
-        assert model.context_window == 200000
-        # All MiniMax models have 128K max output
+        # All current MiniMax models have 128K max output
         assert model.max_tokens == 128000
         # MiniMax uses Anthropic-compatible API endpoint
         assert model.model_endpoint_type == "minimax"
+
+    # M3 has 512K context, M2.7 series has 200K
+    m3 = next(m for m in models if m.model == "MiniMax-M3")
+    assert m3.context_window == 512000
+    for model in models:
+        if model.model != "MiniMax-M3":
+            assert model.context_window == 200000
 
 
 @pytest.mark.skipif(model_settings.azure_api_key is None, reason="Only run if AZURE_API_KEY is set.")

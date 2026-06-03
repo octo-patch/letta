@@ -19,7 +19,7 @@ class TestMiniMaxClient:
         """Set up test fixtures."""
         self.client = MiniMaxClient(put_inner_thoughts_first=True)
         self.llm_config = LLMConfig(
-            model="MiniMax-M2.1",
+            model="MiniMax-M3",
             model_endpoint_type="minimax",
             model_endpoint=MINIMAX_BASE_URL,
             context_window=200000,
@@ -30,7 +30,7 @@ class TestMiniMaxClient:
         assert self.client.is_reasoning_model(self.llm_config) is True
 
         # Test with different models
-        for model_name in ["MiniMax-M2.1", "MiniMax-M2.1-lightning", "MiniMax-M2"]:
+        for model_name in ["MiniMax-M3", "MiniMax-M2.7", "MiniMax-M2.7-highspeed"]:
             config = LLMConfig(
                 model=model_name,
                 model_endpoint_type="minimax",
@@ -91,7 +91,7 @@ class TestMiniMaxClientTemperatureClamping:
         """Set up test fixtures."""
         self.client = MiniMaxClient(put_inner_thoughts_first=True)
         self.llm_config = LLMConfig(
-            model="MiniMax-M2.1",
+            model="MiniMax-M3",
             model_endpoint_type="minimax",
             model_endpoint=MINIMAX_BASE_URL,
             context_window=200000,
@@ -113,7 +113,7 @@ class TestMiniMaxClientTemperatureClamping:
     def test_temperature_zero_clamped(self):
         """Test that temperature=0 is clamped to 0.01."""
         config = LLMConfig(
-            model="MiniMax-M2.1",
+            model="MiniMax-M3",
             model_endpoint_type="minimax",
             model_endpoint=MINIMAX_BASE_URL,
             context_window=200000,
@@ -122,7 +122,7 @@ class TestMiniMaxClientTemperatureClamping:
 
         # Mock the parent class method to return a basic dict
         with patch.object(MiniMaxClient.__bases__[0], "build_request_data") as mock_parent:
-            mock_parent.return_value = {"temperature": 0, "model": "MiniMax-M2.1"}
+            mock_parent.return_value = {"temperature": 0, "model": "MiniMax-M3"}
 
             result = self.client.build_request_data(
                 agent_type=AgentType.letta_v1_agent,
@@ -136,7 +136,7 @@ class TestMiniMaxClientTemperatureClamping:
     def test_temperature_negative_clamped(self):
         """Test that negative temperature is clamped to 0.01."""
         config = LLMConfig(
-            model="MiniMax-M2.1",
+            model="MiniMax-M3",
             model_endpoint_type="minimax",
             model_endpoint=MINIMAX_BASE_URL,
             context_window=200000,
@@ -144,7 +144,7 @@ class TestMiniMaxClientTemperatureClamping:
         )
 
         with patch.object(MiniMaxClient.__bases__[0], "build_request_data") as mock_parent:
-            mock_parent.return_value = {"temperature": -0.5, "model": "MiniMax-M2.1"}
+            mock_parent.return_value = {"temperature": -0.5, "model": "MiniMax-M3"}
 
             result = self.client.build_request_data(
                 agent_type=AgentType.letta_v1_agent,
@@ -157,7 +157,7 @@ class TestMiniMaxClientTemperatureClamping:
     def test_temperature_above_one_clamped(self):
         """Test that temperature > 1.0 is clamped to 1.0."""
         config = LLMConfig(
-            model="MiniMax-M2.1",
+            model="MiniMax-M3",
             model_endpoint_type="minimax",
             model_endpoint=MINIMAX_BASE_URL,
             context_window=200000,
@@ -165,7 +165,7 @@ class TestMiniMaxClientTemperatureClamping:
         )
 
         with patch.object(MiniMaxClient.__bases__[0], "build_request_data") as mock_parent:
-            mock_parent.return_value = {"temperature": 1.5, "model": "MiniMax-M2.1"}
+            mock_parent.return_value = {"temperature": 1.5, "model": "MiniMax-M3"}
 
             result = self.client.build_request_data(
                 agent_type=AgentType.letta_v1_agent,
@@ -178,7 +178,7 @@ class TestMiniMaxClientTemperatureClamping:
     def test_temperature_valid_not_modified(self):
         """Test that valid temperature values are not modified."""
         config = LLMConfig(
-            model="MiniMax-M2.1",
+            model="MiniMax-M3",
             model_endpoint_type="minimax",
             model_endpoint=MINIMAX_BASE_URL,
             context_window=200000,
@@ -186,7 +186,7 @@ class TestMiniMaxClientTemperatureClamping:
         )
 
         with patch.object(MiniMaxClient.__bases__[0], "build_request_data") as mock_parent:
-            mock_parent.return_value = {"temperature": 0.7, "model": "MiniMax-M2.1"}
+            mock_parent.return_value = {"temperature": 0.7, "model": "MiniMax-M3"}
 
             result = self.client.build_request_data(
                 agent_type=AgentType.letta_v1_agent,
@@ -204,7 +204,7 @@ class TestMiniMaxClientUsesNonBetaAPI:
         """Verify request() uses client.messages.create, not client.beta.messages.create."""
         client = MiniMaxClient(put_inner_thoughts_first=True)
         llm_config = LLMConfig(
-            model="MiniMax-M2.1",
+            model="MiniMax-M3",
             model_endpoint_type="minimax",
             model_endpoint=MINIMAX_BASE_URL,
             context_window=200000,
@@ -217,7 +217,7 @@ class TestMiniMaxClientUsesNonBetaAPI:
             mock_anthropic_client.messages.create.return_value = mock_response
             mock_get_client.return_value = mock_anthropic_client
 
-            client.request({"model": "MiniMax-M2.1"}, llm_config)
+            client.request({"model": "MiniMax-M3"}, llm_config)
 
             # Verify messages.create was called (not beta.messages.create)
             mock_anthropic_client.messages.create.assert_called_once()
@@ -229,7 +229,7 @@ class TestMiniMaxClientUsesNonBetaAPI:
         """Verify request_async() uses client.messages.create, not client.beta.messages.create."""
         client = MiniMaxClient(put_inner_thoughts_first=True)
         llm_config = LLMConfig(
-            model="MiniMax-M2.1",
+            model="MiniMax-M3",
             model_endpoint_type="minimax",
             model_endpoint=MINIMAX_BASE_URL,
             context_window=200000,
@@ -242,7 +242,7 @@ class TestMiniMaxClientUsesNonBetaAPI:
             mock_anthropic_client.messages.create.return_value = mock_response
             mock_get_client.return_value = mock_anthropic_client
 
-            await client.request_async({"model": "MiniMax-M2.1"}, llm_config)
+            await client.request_async({"model": "MiniMax-M3"}, llm_config)
 
             # Verify messages.create was called (not beta.messages.create)
             mock_anthropic_client.messages.create.assert_called_once()
@@ -252,7 +252,7 @@ class TestMiniMaxClientUsesNonBetaAPI:
         """Verify stream_async() uses client.messages.create, not client.beta.messages.create."""
         client = MiniMaxClient(put_inner_thoughts_first=True)
         llm_config = LLMConfig(
-            model="MiniMax-M2.1",
+            model="MiniMax-M3",
             model_endpoint_type="minimax",
             model_endpoint=MINIMAX_BASE_URL,
             context_window=200000,
@@ -264,7 +264,7 @@ class TestMiniMaxClientUsesNonBetaAPI:
             mock_anthropic_client.messages.create.return_value = mock_stream
             mock_get_client.return_value = mock_anthropic_client
 
-            await client.stream_async({"model": "MiniMax-M2.1"}, llm_config)
+            await client.stream_async({"model": "MiniMax-M3"}, llm_config)
 
             # Verify messages.create was called (not beta.messages.create)
             mock_anthropic_client.messages.create.assert_called_once()

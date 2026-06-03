@@ -166,7 +166,7 @@ class MiniMaxClient(AnthropicClient):
 
     def is_reasoning_model(self, llm_config: LLMConfig) -> bool:
         """
-        All MiniMax M2.x models support native interleaved thinking.
+        All MiniMax models support native interleaved thinking.
 
         Unlike Anthropic where only certain models (Claude 3.7+) support extended thinking,
         all MiniMax models natively support thinking blocks without beta headers.
