@@ -15,6 +15,12 @@ logger = get_logger(__name__)
 # https://platform.minimax.io/docs/guides/models-intro
 MODEL_LIST = [
     {
+        "name": "MiniMax-M3",
+        "context_window": 1000000,
+        "max_output": 128000,
+        "description": "Flagship model with a 1,000,000-token context window; supports adaptive and disabled thinking modes.",
+    },
+    {
         "name": "MiniMax-M2.1",
         "context_window": 200000,
         "max_output": 128000,
@@ -40,9 +46,9 @@ MODEL_LIST = [
     },
     {
         "name": "MiniMax-M2.7",
-        "context_window": 200000,
+        "context_window": 204800,
         "max_output": 128000,
-        "description": "Latest model.",
+        "description": "Extended 204,800-token context window with always-on thinking.",
     },
 ]
 
@@ -54,13 +60,24 @@ class MiniMaxProvider(Provider):
     MiniMax models support native interleaved thinking without requiring beta headers.
     The API uses the standard messages endpoint (not beta).
 
+    Two regional Anthropic-compatible endpoints are available; set ``base_url`` to the one
+    matching your account region:
+      - Global: https://api.minimax.io/anthropic
+      - Mainland China: https://api.minimaxi.com/anthropic
+
     Documentation: https://platform.minimax.io/docs/api-reference/text-anthropic-api
     """
 
     provider_type: Literal[ProviderType.minimax] = Field(ProviderType.minimax, description="The type of the provider.")
     provider_category: ProviderCategory = Field(ProviderCategory.base, description="The category of the provider (base or byok)")
     api_key: str | None = Field(None, description="API key for the MiniMax API.", deprecated=True)
-    base_url: str = Field("https://api.minimax.io/anthropic", description="Base URL for the MiniMax Anthropic-compatible API.")
+    base_url: str = Field(
+        "https://api.minimax.io/anthropic",
+        description=(
+            "Base URL for the MiniMax Anthropic-compatible API. Use https://api.minimax.io/anthropic for the "
+            "global endpoint or https://api.minimaxi.com/anthropic for the mainland China endpoint."
+        ),
+    )
 
     async def check_api_key(self):
         """Check if the API key is valid by making a test request to the MiniMax API."""
@@ -85,7 +102,7 @@ class MiniMaxProvider(Provider):
 
     def get_model_context_window_size(self, model_name: str) -> int | None:
         """Get the context window size for a MiniMax model."""
-        # All current MiniMax models have 200K context window
+        # Context windows vary per model (e.g. MiniMax-M3 supports 1,000,000 tokens).
         for model in MODEL_LIST:
             if model["name"] == model_name:
                 return model["context_window"]

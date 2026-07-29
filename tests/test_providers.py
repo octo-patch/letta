@@ -144,21 +144,29 @@ async def test_minimax():
     provider = MiniMaxProvider(name="minimax")
     models = await provider.list_llm_models_async()
 
-    # Should have exactly 3 models: M2.1, M2.1-lightning, M2, M2.5, M2.7
-    assert len(models) == 5
+    # Should have exactly 6 models: M3, M2.1, M2.1-lightning, M2, M2.5, M2.7
+    assert len(models) == 6
 
     # Verify model properties
     model_names = {m.model for m in models}
+    assert "MiniMax-M3" in model_names
     assert "MiniMax-M2.1" in model_names
     assert "MiniMax-M2.1-lightning" in model_names
     assert "MiniMax-M2" in model_names
     assert "MiniMax-M2.5" in model_names
+    assert "MiniMax-M2.7" in model_names
+
+    # Context windows vary per model; the rest default to 200K
+    expected_context_windows = {
+        "MiniMax-M3": 1000000,
+        "MiniMax-M2.7": 204800,
+    }
 
     # Verify handle format
     for model in models:
         assert model.handle == f"{provider.name}/{model.model}"
-        # All MiniMax models have 200K context window
-        assert model.context_window == 200000
+        # Context window matches the per-model value (200K by default)
+        assert model.context_window == expected_context_windows.get(model.model, 200000)
         # All MiniMax models have 128K max output
         assert model.max_tokens == 128000
         # MiniMax uses Anthropic-compatible API endpoint
