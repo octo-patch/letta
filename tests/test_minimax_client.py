@@ -26,16 +26,16 @@ class TestMiniMaxClient:
         )
 
     def test_is_reasoning_model_always_true(self):
-        """All MiniMax models support native interleaved thinking."""
+        """MiniMax M2.x and M3 models support native interleaved thinking."""
         assert self.client.is_reasoning_model(self.llm_config) is True
 
-        # Test with different models
-        for model_name in ["MiniMax-M2.1", "MiniMax-M2.1-lightning", "MiniMax-M2"]:
+        # Test with different models, including MiniMax-M3
+        for model_name in ["MiniMax-M3", "MiniMax-M2.7", "MiniMax-M2.1", "MiniMax-M2.1-lightning", "MiniMax-M2"]:
             config = LLMConfig(
                 model=model_name,
                 model_endpoint_type="minimax",
                 model_endpoint=MINIMAX_BASE_URL,
-                context_window=200000,
+                context_window=1000000 if model_name == "MiniMax-M3" else 204800,
             )
             assert self.client.is_reasoning_model(config) is True
 
@@ -195,6 +195,105 @@ class TestMiniMaxClientTemperatureClamping:
             )
 
             assert result["temperature"] == 0.7
+
+
+class TestMiniMaxThinkingConfiguration:
+    """Tests for MiniMax-M3 adaptive thinking and M2.x always-on thinking."""
+
+    def _build_client(self):
+        return MiniMaxClient(put_inner_thoughts_first=True)
+
+    def test_m3_adaptive_thinking_when_reasoning_enabled(self):
+        """MiniMax-M3 maps an enabled reasoning request to adaptive thinking."""
+        client = self._build_client()
+        llm_config = LLMConfig(
+            model="MiniMax-M3",
+            model_endpoint_type="minimax",
+            model_endpoint=MINIMAX_BASE_URL,
+            context_window=1000000,
+            enable_reasoner=True,
+            max_reasoning_tokens=1024,
+        )
+
+        with patch.object(MiniMaxClient.__bases__[0], "build_request_data") as mock_parent:
+            mock_parent.return_value = {"model": "MiniMax-M3", "thinking": {"type": "enabled", "budget_tokens": 1024}}
+
+            result = client.build_request_data(
+                agent_type=AgentType.letta_v1_agent,
+                messages=[],
+                llm_config=llm_config,
+            )
+
+            assert result["thinking"] == {"type": "adaptive"}
+
+    def test_m3_disabled_thinking_when_reasoning_disabled(self):
+        """MiniMax-M3 maps a disabled reasoning request to explicitly disabled thinking."""
+        client = self._build_client()
+        llm_config = LLMConfig(
+            model="MiniMax-M3",
+            model_endpoint_type="minimax",
+            model_endpoint=MINIMAX_BASE_URL,
+            context_window=1000000,
+            enable_reasoner=False,
+            max_reasoning_tokens=1024,
+        )
+
+        with patch.object(MiniMaxClient.__bases__[0], "build_request_data") as mock_parent:
+            mock_parent.return_value = {"model": "MiniMax-M3", "thinking": {"type": "enabled", "budget_tokens": 1024}}
+
+            result = client.build_request_data(
+                agent_type=AgentType.letta_v1_agent,
+                messages=[],
+                llm_config=llm_config,
+            )
+
+            assert result["thinking"] == {"type": "disabled"}
+
+    def test_m3_no_thinking_block_when_parent_omits_it(self):
+        """If the parent did not produce a thinking block, MiniMax-M3 does not add one."""
+        client = self._build_client()
+        llm_config = LLMConfig(
+            model="MiniMax-M3",
+            model_endpoint_type="minimax",
+            model_endpoint=MINIMAX_BASE_URL,
+            context_window=1000000,
+            enable_reasoner=False,
+        )
+
+        with patch.object(MiniMaxClient.__bases__[0], "build_request_data") as mock_parent:
+            mock_parent.return_value = {"model": "MiniMax-M3"}
+
+            result = client.build_request_data(
+                agent_type=AgentType.letta_v1_agent,
+                messages=[],
+                llm_config=llm_config,
+            )
+
+            assert "thinking" not in result
+
+    def test_m2_thinking_block_left_untouched(self):
+        """M2.x models always think; the thinking block is passed through unchanged."""
+        client = self._build_client()
+        llm_config = LLMConfig(
+            model="MiniMax-M2.7",
+            model_endpoint_type="minimax",
+            model_endpoint=MINIMAX_BASE_URL,
+            context_window=204800,
+            enable_reasoner=False,
+            max_reasoning_tokens=1024,
+        )
+
+        parent_thinking = {"type": "enabled", "budget_tokens": 1024}
+        with patch.object(MiniMaxClient.__bases__[0], "build_request_data") as mock_parent:
+            mock_parent.return_value = {"model": "MiniMax-M2.7", "thinking": parent_thinking}
+
+            result = client.build_request_data(
+                agent_type=AgentType.letta_v1_agent,
+                messages=[],
+                llm_config=llm_config,
+            )
+
+            assert result["thinking"] == parent_thinking
 
 
 class TestMiniMaxClientUsesNonBetaAPI:

@@ -158,6 +158,20 @@ class MiniMaxClient(AnthropicClient):
                 data["temperature"] = 1.0  # Maximum valid value
                 logger.warning(f"[MiniMax] Temperature {temp} is invalid. Clamped to 1.0.")
 
+        # MiniMax-M3 supports adaptive thinking (off by default, enabled on demand), while M2.x
+        # models always emit thinking and cannot disable it. Translate the Anthropic-style
+        # `thinking` block produced by AnthropicClient into the MiniMax-compatible form:
+        #   - M3 with reasoning requested -> adaptive thinking
+        #   - M3 with reasoning disabled -> explicitly disabled thinking
+        #   - M2.x models -> the API ignores the thinking field, so leave it untouched.
+        # See https://platform.minimax.io/docs/api-reference/text-anthropic-api
+        if data.get("thinking") is not None:
+            if llm_config.model.startswith("MiniMax-M3"):
+                if llm_config.enable_reasoner:
+                    data["thinking"] = {"type": "adaptive"}
+                else:
+                    data["thinking"] = {"type": "disabled"}
+
         # MiniMax ignores these Anthropic-specific parameters, but we can remove them
         # to avoid potential issues (they won't cause errors, just ignored)
         # Note: We don't remove them since MiniMax silently ignores them
@@ -166,12 +180,16 @@ class MiniMaxClient(AnthropicClient):
 
     def is_reasoning_model(self, llm_config: LLMConfig) -> bool:
         """
-        All MiniMax M2.x models support native interleaved thinking.
+        MiniMax M2.x models always emit native interleaved thinking.
 
-        Unlike Anthropic where only certain models (Claude 3.7+) support extended thinking,
-        all MiniMax models natively support thinking blocks without beta headers.
+        MiniMax-M3 supports adaptive thinking that is off by default and can be enabled on
+        demand. Unlike Anthropic where only certain models (Claude 3.7+) support extended
+        thinking, MiniMax models natively support thinking blocks without beta headers.
+
+        See https://platform.minimax.io/docs/api-reference/text-anthropic-api
         """
-        return True
+        # MiniMax-M3 supports adaptive/disabled thinking; M2.x models always think.
+        return llm_config.model.startswith("MiniMax-M2") or llm_config.model.startswith("MiniMax-M3")
 
     def requires_auto_tool_choice(self, llm_config: LLMConfig) -> bool:
         """MiniMax models support all tool choice modes."""

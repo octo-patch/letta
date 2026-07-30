@@ -13,36 +13,54 @@ logger = get_logger(__name__)
 
 # MiniMax model specifications from official documentation
 # https://platform.minimax.io/docs/guides/models-intro
+#
+# `thinking` describes the reasoning behavior advertised for each model:
+#   - "always_on": thinking is always emitted and cannot be disabled (M2.x models)
+#   - "adaptive": thinking is off by default and can be enabled with adaptive thinking (MiniMax-M3)
+#   - "disabled": thinking can be explicitly turned off (MiniMax-M3)
+# See https://platform.minimax.io/docs/api-reference/text-anthropic-api
 MODEL_LIST = [
     {
-        "name": "MiniMax-M2.1",
-        "context_window": 200000,
+        "name": "MiniMax-M3",
+        "context_window": 1000000,
         "max_output": 128000,
-        "description": "Polyglot code mastery, precision code refactoring (~60 tps)",
-    },
-    {
-        "name": "MiniMax-M2.1-lightning",
-        "context_window": 200000,
-        "max_output": 128000,
-        "description": "Same performance as M2.1, significantly faster (~100 tps)",
-    },
-    {
-        "name": "MiniMax-M2",
-        "context_window": 200000,
-        "max_output": 128000,
-        "description": "Agentic capabilities, advanced reasoning",
-    },
-    {
-        "name": "MiniMax-M2.5",
-        "context_window": 200000,
-        "max_output": 128000,
-        "description": "Peak Performance. Ultimate Value. Master the Complex",
+        "description": "Latest M-series model for agentic reasoning, tool use, coding, and long-context tasks.",
+        "thinking": ["adaptive", "disabled"],
     },
     {
         "name": "MiniMax-M2.7",
-        "context_window": 200000,
+        "context_window": 204800,
         "max_output": 128000,
-        "description": "Latest model.",
+        "description": "Beginning the journey of recursive self-improvement.",
+        "thinking": ["always_on"],
+    },
+    {
+        "name": "MiniMax-M2.1",
+        "context_window": 204800,
+        "max_output": 128000,
+        "description": "Polyglot code mastery, precision code refactoring (~60 tps).",
+        "thinking": ["always_on"],
+    },
+    {
+        "name": "MiniMax-M2.1-lightning",
+        "context_window": 204800,
+        "max_output": 128000,
+        "description": "Same performance as M2.1, significantly faster (~100 tps).",
+        "thinking": ["always_on"],
+    },
+    {
+        "name": "MiniMax-M2",
+        "context_window": 204800,
+        "max_output": 128000,
+        "description": "Agentic capabilities, advanced reasoning.",
+        "thinking": ["always_on"],
+    },
+    {
+        "name": "MiniMax-M2.5",
+        "context_window": 204800,
+        "max_output": 128000,
+        "description": "Peak Performance. Ultimate Value. Master the Complex.",
+        "thinking": ["always_on"],
     },
 ]
 
@@ -85,12 +103,11 @@ class MiniMaxProvider(Provider):
 
     def get_model_context_window_size(self, model_name: str) -> int | None:
         """Get the context window size for a MiniMax model."""
-        # All current MiniMax models have 200K context window
         for model in MODEL_LIST:
             if model["name"] == model_name:
                 return model["context_window"]
         # Default fallback
-        return 200000
+        return 204800
 
     async def list_llm_models_async(self) -> list[LLMConfig]:
         """
@@ -100,6 +117,11 @@ class MiniMaxProvider(Provider):
         """
         configs = []
         for model in MODEL_LIST:
+            thinking_modes = model["thinking"]
+            # MiniMax-M3 supports adaptive thinking that can be toggled on/off, so we honor the
+            # agent's reasoning preference. M2.x models always emit thinking and cannot disable it,
+            # so we keep reasoning enabled by default regardless of the requested setting.
+            enable_reasoner = "adaptive" in thinking_modes or "always_on" in thinking_modes
             configs.append(
                 LLMConfig(
                     model=model["name"],
@@ -112,6 +134,7 @@ class MiniMaxProvider(Provider):
                     put_inner_thoughts_in_kwargs=True,
                     # MiniMax models support parallel tool calling via Anthropic-compatible API
                     parallel_tool_calls=True,
+                    enable_reasoner=enable_reasoner,
                     provider_name=self.name,
                     provider_category=self.provider_category,
                 )

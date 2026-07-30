@@ -144,25 +144,39 @@ async def test_minimax():
     provider = MiniMaxProvider(name="minimax")
     models = await provider.list_llm_models_async()
 
-    # Should have exactly 3 models: M2.1, M2.1-lightning, M2, M2.5, M2.7
-    assert len(models) == 5
+    # Models: MiniMax-M3, MiniMax-M2.7, MiniMax-M2.1, MiniMax-M2.1-lightning, MiniMax-M2, MiniMax-M2.5
+    assert len(models) == 6
 
     # Verify model properties
     model_names = {m.model for m in models}
+    assert "MiniMax-M3" in model_names
+    assert "MiniMax-M2.7" in model_names
     assert "MiniMax-M2.1" in model_names
     assert "MiniMax-M2.1-lightning" in model_names
     assert "MiniMax-M2" in model_names
     assert "MiniMax-M2.5" in model_names
 
-    # Verify handle format
+    # Verify handle format and per-model context windows / max output tokens
+    expected_context_window = {
+        "MiniMax-M3": 1000000,
+        "MiniMax-M2.7": 204800,
+        "MiniMax-M2.1": 204800,
+        "MiniMax-M2.1-lightning": 204800,
+        "MiniMax-M2": 204800,
+        "MiniMax-M2.5": 204800,
+    }
     for model in models:
         assert model.handle == f"{provider.name}/{model.model}"
-        # All MiniMax models have 200K context window
-        assert model.context_window == 200000
+        assert model.context_window == expected_context_window[model.model]
         # All MiniMax models have 128K max output
         assert model.max_tokens == 128000
         # MiniMax uses Anthropic-compatible API endpoint
         assert model.model_endpoint_type == "minimax"
+
+    # MiniMax-M3 supports adaptive/disabled thinking; M2.x models always think.
+    by_name = {m.model: m for m in models}
+    assert by_name["MiniMax-M3"].enable_reasoner is True
+    assert by_name["MiniMax-M2.7"].enable_reasoner is True
 
 
 @pytest.mark.skipif(model_settings.azure_api_key is None, reason="Only run if AZURE_API_KEY is set.")
