@@ -20,6 +20,7 @@ from letta.schemas.providers import (
     ZAIProvider,
 )
 from letta.schemas.providers.chatgpt_oauth import CHATGPT_MODELS
+from letta.schemas.providers.minimax import MINIMAX_BASE_URLS
 from letta.schemas.secret import Secret
 from letta.settings import model_settings
 
@@ -144,25 +145,22 @@ async def test_minimax():
     provider = MiniMaxProvider(name="minimax")
     models = await provider.list_llm_models_async()
 
-    # Should have exactly 3 models: M2.1, M2.1-lightning, M2, M2.5, M2.7
-    assert len(models) == 5
+    assert len(models) == 6
 
-    # Verify model properties
-    model_names = {m.model for m in models}
-    assert "MiniMax-M2.1" in model_names
-    assert "MiniMax-M2.1-lightning" in model_names
-    assert "MiniMax-M2" in model_names
-    assert "MiniMax-M2.5" in model_names
+    models_by_name = {m.model: m for m in models}
+    assert models_by_name["MiniMax-M3"].context_window == 1000000
+    assert models_by_name["MiniMax-M3"].put_inner_thoughts_in_kwargs is False
+    assert models_by_name["MiniMax-M2.7"].context_window == 204800
+    assert models_by_name["MiniMax-M2.7"].put_inner_thoughts_in_kwargs is True
 
     # Verify handle format
     for model in models:
         assert model.handle == f"{provider.name}/{model.model}"
-        # All MiniMax models have 200K context window
-        assert model.context_window == 200000
-        # All MiniMax models have 128K max output
         assert model.max_tokens == 128000
-        # MiniMax uses Anthropic-compatible API endpoint
         assert model.model_endpoint_type == "minimax"
+
+    assert provider.base_url == MINIMAX_BASE_URLS["global_en"]
+    assert MiniMaxProvider(name="minimax-cn", base_url=MINIMAX_BASE_URLS["cn_zh"]).base_url == "https://api.minimaxi.com/anthropic"
 
 
 @pytest.mark.skipif(model_settings.azure_api_key is None, reason="Only run if AZURE_API_KEY is set.")

@@ -11,9 +11,21 @@ from letta.schemas.providers.base import Provider
 
 logger = get_logger(__name__)
 
+MINIMAX_BASE_URLS = {
+    "global_en": "https://api.minimax.io/anthropic",
+    "cn_zh": "https://api.minimaxi.com/anthropic",
+}
+
 # MiniMax model specifications from official documentation
 # https://platform.minimax.io/docs/guides/models-intro
 MODEL_LIST = [
+    {
+        "name": "MiniMax-M3",
+        "context_window": 1000000,
+        "max_output": 128000,
+        "description": "Adaptive thinking model with text, image, and video inputs.",
+        "put_inner_thoughts_in_kwargs": False,
+    },
     {
         "name": "MiniMax-M2.1",
         "context_window": 200000,
@@ -40,9 +52,10 @@ MODEL_LIST = [
     },
     {
         "name": "MiniMax-M2.7",
-        "context_window": 200000,
+        "context_window": 204800,
         "max_output": 128000,
-        "description": "Latest model.",
+        "description": "Always-on thinking model.",
+        "put_inner_thoughts_in_kwargs": True,
     },
 ]
 
@@ -60,7 +73,7 @@ class MiniMaxProvider(Provider):
     provider_type: Literal[ProviderType.minimax] = Field(ProviderType.minimax, description="The type of the provider.")
     provider_category: ProviderCategory = Field(ProviderCategory.base, description="The category of the provider (base or byok)")
     api_key: str | None = Field(None, description="API key for the MiniMax API.", deprecated=True)
-    base_url: str = Field("https://api.minimax.io/anthropic", description="Base URL for the MiniMax Anthropic-compatible API.")
+    base_url: str = Field(MINIMAX_BASE_URLS["global_en"], description="Base URL for the MiniMax Anthropic-compatible API.")
 
     async def check_api_key(self):
         """Check if the API key is valid by making a test request to the MiniMax API."""
@@ -85,12 +98,10 @@ class MiniMaxProvider(Provider):
 
     def get_model_context_window_size(self, model_name: str) -> int | None:
         """Get the context window size for a MiniMax model."""
-        # All current MiniMax models have 200K context window
         for model in MODEL_LIST:
             if model["name"] == model_name:
                 return model["context_window"]
-        # Default fallback
-        return 200000
+        return MODEL_LIST[0]["context_window"]
 
     async def list_llm_models_async(self) -> list[LLMConfig]:
         """
@@ -108,8 +119,7 @@ class MiniMaxProvider(Provider):
                     context_window=model["context_window"],
                     handle=self.get_handle(model["name"]),
                     max_tokens=model["max_output"],
-                    # MiniMax models support native thinking, similar to Claude's extended thinking
-                    put_inner_thoughts_in_kwargs=True,
+                    put_inner_thoughts_in_kwargs=model.get("put_inner_thoughts_in_kwargs", True),
                     # MiniMax models support parallel tool calling via Anthropic-compatible API
                     parallel_tool_calls=True,
                     provider_name=self.name,

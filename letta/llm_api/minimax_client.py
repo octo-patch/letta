@@ -2,7 +2,7 @@ from typing import List, Optional, Union
 
 import anthropic
 from anthropic import AsyncStream
-from anthropic.types.beta import BetaMessage, BetaRawMessageStreamEvent
+from anthropic.types import Message, RawMessageStreamEvent
 
 from letta.helpers.json_helpers import sanitize_unicode_surrogates
 from letta.llm_api.anthropic_client import AnthropicClient
@@ -20,7 +20,7 @@ class MiniMaxClient(AnthropicClient):
     """
     MiniMax LLM client using Anthropic-compatible API.
 
-    Uses the beta messages API to ensure compatibility with Anthropic streaming interfaces.
+    Uses the standard messages API to ensure compatibility with MiniMax endpoints.
     Temperature must be in range (0.0, 1.0].
     Some Anthropic params are ignored: top_k, stop_sequences, service_tier, etc.
 
@@ -70,11 +70,11 @@ class MiniMaxClient(AnthropicClient):
         """
         Synchronous request to MiniMax API.
 
-        Uses beta messages API for compatibility with Anthropic streaming interfaces.
+        Uses the standard messages API.
         """
         client = self._get_anthropic_client(llm_config, async_client=False)
 
-        response: BetaMessage = client.beta.messages.create(**request_data)
+        response: Message = client.messages.create(**request_data)
         return response.model_dump()
 
     @trace_method
@@ -82,14 +82,14 @@ class MiniMaxClient(AnthropicClient):
         """
         Asynchronous request to MiniMax API.
 
-        Uses beta messages API for compatibility with Anthropic streaming interfaces.
+        Uses the standard messages API.
         """
         request_data = sanitize_unicode_surrogates(request_data)
 
         client = await self._get_anthropic_client_async(llm_config, async_client=True)
 
         try:
-            response: BetaMessage = await client.beta.messages.create(**request_data)
+            response: Message = await client.messages.create(**request_data)
             return response.model_dump()
         except ValueError as e:
             # Handle streaming fallback if needed (similar to Anthropic client)
@@ -102,11 +102,11 @@ class MiniMaxClient(AnthropicClient):
             raise
 
     @trace_method
-    async def stream_async(self, request_data: dict, llm_config: LLMConfig) -> AsyncStream[BetaRawMessageStreamEvent]:
+    async def stream_async(self, request_data: dict, llm_config: LLMConfig) -> AsyncStream[RawMessageStreamEvent]:
         """
         Asynchronous streaming request to MiniMax API.
 
-        Uses beta messages API for compatibility with Anthropic streaming interfaces.
+        Uses the standard messages API.
         """
         request_data = sanitize_unicode_surrogates(request_data)
 
@@ -114,7 +114,7 @@ class MiniMaxClient(AnthropicClient):
         request_data["stream"] = True
 
         try:
-            return await client.beta.messages.create(**request_data)
+            return await client.messages.create(**request_data)
         except Exception as e:
             logger.error(f"Error streaming MiniMax request: {e}")
             raise e
@@ -166,12 +166,9 @@ class MiniMaxClient(AnthropicClient):
 
     def is_reasoning_model(self, llm_config: LLMConfig) -> bool:
         """
-        All MiniMax M2.x models support native interleaved thinking.
-
-        Unlike Anthropic where only certain models (Claude 3.7+) support extended thinking,
-        all MiniMax models natively support thinking blocks without beta headers.
+        MiniMax models differ in whether thinking must be enabled by the caller.
         """
-        return True
+        return llm_config.model == "MiniMax-M2.7"
 
     def requires_auto_tool_choice(self, llm_config: LLMConfig) -> bool:
         """MiniMax models support all tool choice modes."""

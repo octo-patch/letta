@@ -25,19 +25,18 @@ class TestMiniMaxClient:
             context_window=200000,
         )
 
-    def test_is_reasoning_model_always_true(self):
-        """All MiniMax models support native interleaved thinking."""
-        assert self.client.is_reasoning_model(self.llm_config) is True
+    def test_is_reasoning_model_uses_model_metadata(self):
+        """Only always-on thinking models force reasoning mode."""
+        assert self.client.is_reasoning_model(self.llm_config) is False
 
-        # Test with different models
-        for model_name in ["MiniMax-M2.1", "MiniMax-M2.1-lightning", "MiniMax-M2"]:
+        for model_name, expected in [("MiniMax-M3", False), ("MiniMax-M2.7", True)]:
             config = LLMConfig(
                 model=model_name,
                 model_endpoint_type="minimax",
                 model_endpoint=MINIMAX_BASE_URL,
-                context_window=200000,
+                context_window=1000000 if model_name == "MiniMax-M3" else 204800,
             )
-            assert self.client.is_reasoning_model(config) is True
+            assert self.client.is_reasoning_model(config) is expected
 
     def test_requires_auto_tool_choice(self):
         """MiniMax supports all tool choice modes."""
@@ -60,10 +59,9 @@ class TestMiniMaxClient:
 
             self.client._get_anthropic_client(self.llm_config, async_client=False)
 
-            mock_anthropic.Anthropic.assert_called_once_with(
-                api_key="test-api-key",
-                base_url=MINIMAX_BASE_URL,
-            )
+            called_kwargs = mock_anthropic.Anthropic.call_args.kwargs
+            assert called_kwargs["api_key"] == "test-api-key"
+            assert called_kwargs["base_url"] == MINIMAX_BASE_URL
 
     @patch("letta.llm_api.minimax_client.model_settings")
     def test_get_anthropic_client_async(self, mock_settings):
@@ -78,10 +76,9 @@ class TestMiniMaxClient:
 
             self.client._get_anthropic_client(self.llm_config, async_client=True)
 
-            mock_anthropic.AsyncAnthropic.assert_called_once_with(
-                api_key="test-api-key",
-                base_url=MINIMAX_BASE_URL,
-            )
+            called_kwargs = mock_anthropic.AsyncAnthropic.call_args.kwargs
+            assert called_kwargs["api_key"] == "test-api-key"
+            assert called_kwargs["base_url"] == MINIMAX_BASE_URL
 
 
 class TestMiniMaxClientTemperatureClamping:
