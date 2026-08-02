@@ -1,5 +1,5 @@
 {
-  "handle": "minimax/MiniMax-M2.1-lightning",
+  "handle": "minimax/MiniMax-M2.7",
   "model_settings": {
     "provider_type": "minimax",
     "temperature": 1.0,

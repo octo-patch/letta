@@ -244,9 +244,9 @@ def is_reasoner_model(model_handle: str, model_settings: dict) -> bool:
     elif provider_type in ["google_vertex", "google_ai"]:
         return model.startswith("gemini-2.5-flash") or model.startswith("gemini-2.5-pro") or model.startswith("gemini-3")
 
-    # MiniMax reasoning models (all M2.x models support native interleaved thinking)
+    # MiniMax reasoning models
     elif provider_type == "minimax":
-        return model.startswith("MiniMax-M2")
+        return model.startswith("MiniMax-M3") or model.startswith("MiniMax-M2.7")
 
     return False
 

@@ -15,36 +15,21 @@ logger = get_logger(__name__)
 # https://platform.minimax.io/docs/guides/models-intro
 MODEL_LIST = [
     {
-        "name": "MiniMax-M2.1",
-        "context_window": 200000,
+        "name": "MiniMax-M3",
+        "context_window": 1000000,
         "max_output": 128000,
-        "description": "Polyglot code mastery, precision code refactoring (~60 tps)",
-    },
-    {
-        "name": "MiniMax-M2.1-lightning",
-        "context_window": 200000,
-        "max_output": 128000,
-        "description": "Same performance as M2.1, significantly faster (~100 tps)",
-    },
-    {
-        "name": "MiniMax-M2",
-        "context_window": 200000,
-        "max_output": 128000,
-        "description": "Agentic capabilities, advanced reasoning",
-    },
-    {
-        "name": "MiniMax-M2.5",
-        "context_window": 200000,
-        "max_output": 128000,
-        "description": "Peak Performance. Ultimate Value. Master the Complex",
+        "description": "Adaptive reasoning with multimodal input support.",
     },
     {
         "name": "MiniMax-M2.7",
-        "context_window": 200000,
+        "context_window": 204800,
         "max_output": 128000,
-        "description": "Latest model.",
+        "description": "Always-on reasoning for text workloads.",
     },
 ]
+
+DEFAULT_MODEL_NAME = MODEL_LIST[0]["name"]
+DEFAULT_CONTEXT_WINDOW = MODEL_LIST[0]["context_window"]
 
 
 class MiniMaxProvider(Provider):
@@ -72,7 +57,7 @@ class MiniMaxProvider(Provider):
             # Use async Anthropic client pointed at MiniMax's Anthropic-compatible endpoint
             client = anthropic.AsyncAnthropic(api_key=api_key, base_url=self.base_url)
             # Use count_tokens as a lightweight check - similar to Anthropic provider
-            await client.messages.count_tokens(model=MODEL_LIST[-1]["name"], messages=[{"role": "user", "content": "a"}])
+            await client.messages.count_tokens(model=DEFAULT_MODEL_NAME, messages=[{"role": "user", "content": "a"}])
         except anthropic.AuthenticationError as e:
             raise LLMAuthenticationError(message=f"Failed to authenticate with MiniMax: {e}", code=ErrorCode.UNAUTHENTICATED)
         except Exception as e:
@@ -85,12 +70,11 @@ class MiniMaxProvider(Provider):
 
     def get_model_context_window_size(self, model_name: str) -> int | None:
         """Get the context window size for a MiniMax model."""
-        # All current MiniMax models have 200K context window
+        # Use the current primary model as the fallback context window.
         for model in MODEL_LIST:
             if model["name"] == model_name:
                 return model["context_window"]
-        # Default fallback
-        return 200000
+        return DEFAULT_CONTEXT_WINDOW
 
     async def list_llm_models_async(self) -> list[LLMConfig]:
         """
