@@ -565,6 +565,14 @@ class LLMConfig(BaseModel):
         return False
 
     @classmethod
+    def is_minimax_adaptive_thinking_model(cls, config: "LLMConfig") -> bool:
+        return config.model_endpoint_type == "minimax" and config.model == "MiniMax-M3"
+
+    @classmethod
+    def is_minimax_always_on_thinking_model(cls, config: "LLMConfig") -> bool:
+        return config.model_endpoint_type == "minimax" and config.model == "MiniMax-M2.7"
+
+    @classmethod
     def supports_verbosity(cls, config: "LLMConfig") -> bool:
         """Check if the model supports verbosity control."""
         return config.model_endpoint_type == "openai" and config.model.startswith("gpt-5")
@@ -600,6 +608,16 @@ class LLMConfig(BaseModel):
                         config.reasoning_effort = "medium"
                 if config.model.startswith("gpt-5") and config.verbosity is None:
                     config.verbosity = "medium"
+                return config
+
+            if cls.is_minimax_adaptive_thinking_model(config):
+                config.enable_reasoner = bool(reasoning)
+                config.put_inner_thoughts_in_kwargs = False
+                return config
+
+            if cls.is_minimax_always_on_thinking_model(config):
+                config.enable_reasoner = True
+                config.put_inner_thoughts_in_kwargs = False
                 return config
 
             # Anthropic 3.7/4 and Gemini: toggle honored
@@ -677,6 +695,10 @@ class LLMConfig(BaseModel):
                 # Set verbosity for GPT-5 models
                 if config.model.startswith("gpt-5") and config.verbosity is None:
                     config.verbosity = "medium"
+            elif cls.is_minimax_always_on_thinking_model(config):
+                logger.warning(f"Reasoning cannot be disabled for {config.model} model")
+                config.put_inner_thoughts_in_kwargs = False
+                config.enable_reasoner = True
             elif config.model.startswith("gemini-2.5-pro") or config.model.startswith("gemini-3"):
                 logger.warning(f"Reasoning cannot be disabled for {config.model} model")
                 # Handle as non-reasoner until we support summary
@@ -711,6 +733,8 @@ class LLMConfig(BaseModel):
             elif cls.is_zai_reasoning_model(config):
                 config.put_inner_thoughts_in_kwargs = False
             elif cls.is_openrouter_reasoning_model(config):
+                config.put_inner_thoughts_in_kwargs = False
+            elif cls.is_minimax_adaptive_thinking_model(config) or cls.is_minimax_always_on_thinking_model(config):
                 config.put_inner_thoughts_in_kwargs = False
             elif cls.is_openai_reasoning_model(config):
                 config.put_inner_thoughts_in_kwargs = False

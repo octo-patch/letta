@@ -346,6 +346,7 @@ class SyncServer(object):
                 MiniMaxProvider(
                     name="minimax",
                     api_key_enc=Secret.from_plaintext(model_settings.minimax_api_key),
+                    base_url=model_settings.minimax_base_url,
                 )
             )
         if model_settings.baseten_api_key:

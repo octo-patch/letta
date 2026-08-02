@@ -307,6 +307,7 @@ model:
   # MiniMax (-> MINIMAX_*)
   # minimax:
   #   api_key: ""
+  #   base_url: https://api.minimax.io/anthropic
 
   # Ollama (-> OLLAMA_*)
   # ollama:

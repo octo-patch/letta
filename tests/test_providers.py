@@ -20,6 +20,7 @@ from letta.schemas.providers import (
     ZAIProvider,
 )
 from letta.schemas.providers.chatgpt_oauth import CHATGPT_MODELS
+from letta.schemas.providers.minimax import MINIMAX_CN_ANTHROPIC_BASE_URL, MINIMAX_GLOBAL_ANTHROPIC_BASE_URL
 from letta.schemas.secret import Secret
 from letta.settings import model_settings
 
@@ -144,25 +145,55 @@ async def test_minimax():
     provider = MiniMaxProvider(name="minimax")
     models = await provider.list_llm_models_async()
 
-    # Should have exactly 3 models: M2.1, M2.1-lightning, M2, M2.5, M2.7
-    assert len(models) == 5
+    assert len(models) == 2
 
-    # Verify model properties
-    model_names = {m.model for m in models}
-    assert "MiniMax-M2.1" in model_names
-    assert "MiniMax-M2.1-lightning" in model_names
-    assert "MiniMax-M2" in model_names
-    assert "MiniMax-M2.5" in model_names
+    models_by_name = {m.model: m for m in models}
+    assert models_by_name["MiniMax-M3"].context_window == 1000000
+    assert models_by_name["MiniMax-M3"].put_inner_thoughts_in_kwargs is False
+    assert models_by_name["MiniMax-M3"].enable_reasoner is False
+    assert models_by_name["MiniMax-M2.7"].context_window == 204800
+    assert models_by_name["MiniMax-M2.7"].put_inner_thoughts_in_kwargs is True
+    assert models_by_name["MiniMax-M2.7"].enable_reasoner is True
 
-    # Verify handle format
     for model in models:
         assert model.handle == f"{provider.name}/{model.model}"
-        # All MiniMax models have 200K context window
-        assert model.context_window == 200000
-        # All MiniMax models have 128K max output
         assert model.max_tokens == 128000
-        # MiniMax uses Anthropic-compatible API endpoint
         assert model.model_endpoint_type == "minimax"
+        assert model.model_endpoint == MINIMAX_GLOBAL_ANTHROPIC_BASE_URL
+
+
+@pytest.mark.asyncio
+async def test_minimax_provider_accepts_cn_anthropic_endpoint():
+    provider = MiniMaxProvider(name="minimax", base_url=MINIMAX_CN_ANTHROPIC_BASE_URL)
+    models = await provider.list_llm_models_async()
+
+    assert {model.model_endpoint for model in models} == {MINIMAX_CN_ANTHROPIC_BASE_URL}
+
+
+def test_minimax_reasoning_policy():
+    m3_config = LLMConfig(
+        model="MiniMax-M3",
+        model_endpoint_type="minimax",
+        model_endpoint=MINIMAX_GLOBAL_ANTHROPIC_BASE_URL,
+        context_window=1000000,
+    )
+    LLMConfig.apply_reasoning_setting_to_config(m3_config, reasoning=False, agent_type=AgentType.letta_v1_agent)
+    assert m3_config.enable_reasoner is False
+    assert m3_config.put_inner_thoughts_in_kwargs is False
+
+    LLMConfig.apply_reasoning_setting_to_config(m3_config, reasoning=True, agent_type=AgentType.letta_v1_agent)
+    assert m3_config.enable_reasoner is True
+    assert m3_config.put_inner_thoughts_in_kwargs is False
+
+    m27_config = LLMConfig(
+        model="MiniMax-M2.7",
+        model_endpoint_type="minimax",
+        model_endpoint=MINIMAX_GLOBAL_ANTHROPIC_BASE_URL,
+        context_window=204800,
+    )
+    LLMConfig.apply_reasoning_setting_to_config(m27_config, reasoning=False, agent_type=AgentType.letta_v1_agent)
+    assert m27_config.enable_reasoner is True
+    assert m27_config.put_inner_thoughts_in_kwargs is False
 
 
 @pytest.mark.skipif(model_settings.azure_api_key is None, reason="Only run if AZURE_API_KEY is set.")
