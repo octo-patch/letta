@@ -29,6 +29,7 @@ class MiniMaxClient(AnthropicClient):
     Note: We override client creation to always use llm_config.model_endpoint as base_url
     (required for BYOK where provider_name is user's custom name, not "minimax").
     We also override request methods to avoid passing Anthropic-specific beta headers.
+    MiniMax models support native interleaved thinking. M3 uses adaptive thinking.
     """
 
     @trace_method
@@ -148,6 +149,9 @@ class MiniMaxClient(AnthropicClient):
             system,
         )
 
+        if llm_config.model.startswith("MiniMax-M3") and data.get("thinking", {}).get("type") == "enabled":
+            data["thinking"] = {"type": "adaptive"}
+
         # MiniMax temperature range is (0.0, 1.0], recommended value: 1
         if data.get("temperature") is not None:
             temp = data["temperature"]
@@ -166,7 +170,7 @@ class MiniMaxClient(AnthropicClient):
 
     def is_reasoning_model(self, llm_config: LLMConfig) -> bool:
         """
-        All MiniMax M2.x models support native interleaved thinking.
+        All MiniMax models support native interleaved thinking.
 
         Unlike Anthropic where only certain models (Claude 3.7+) support extended thinking,
         all MiniMax models natively support thinking blocks without beta headers.

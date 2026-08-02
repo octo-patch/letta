@@ -50,9 +50,16 @@ def test_anthropic_client_uses_byok_override_key():
     assert mock_anthropic.Anthropic.call_args.kwargs["api_key"] == "sk-byok-anthropic"
 
 
-def test_minimax_client_uses_byok_override_key():
+@pytest.mark.parametrize(
+    "base_url",
+    [
+        "https://api.minimax.io/anthropic",
+        "https://api.minimaxi.com/anthropic",
+    ],
+)
+def test_minimax_client_uses_byok_override_key(base_url):
     client = MiniMaxClient()
-    llm_config = _make_byok_llm_config("minimax", "https://api.minimax.io/anthropic")
+    llm_config = _make_byok_llm_config("minimax", base_url)
 
     client.get_byok_overrides = MagicMock(return_value=("sk-byok-minimax", None, None))
 

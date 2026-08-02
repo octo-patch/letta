@@ -283,7 +283,7 @@ class SGLangModelSettings(OpenAIModelSettings):
 
 
 class AnthropicThinking(BaseModel):
-    type: Literal["enabled", "disabled"] = Field("enabled", description="The type of thinking to use.")
+    type: Literal["enabled", "disabled", "adaptive"] = Field("enabled", description="The type of thinking to use.")
     budget_tokens: int = Field(1024, description="The maximum number of tokens the model can use for extended thinking.")
 
 
@@ -321,8 +321,8 @@ class AnthropicModelSettings(ModelSettings):
         return {
             "temperature": self.temperature,
             "max_tokens": self.max_output_tokens,
-            "extended_thinking": self.thinking.type == "enabled",
-            "max_reasoning_tokens": self.thinking.budget_tokens,
+            "extended_thinking": self.thinking.type in ("enabled", "adaptive"),
+            "max_reasoning_tokens": 0 if self.thinking.type == "adaptive" else self.thinking.budget_tokens,
             "verbosity": self.verbosity,
             "parallel_tool_calls": self.parallel_tool_calls,
             "effort": self.effort,

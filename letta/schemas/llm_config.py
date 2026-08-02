@@ -481,11 +481,15 @@ class LLMConfig(BaseModel):
             )
         elif self.model_endpoint_type == "minimax":
             # MiniMax uses Anthropic-compatible API
-            thinking_type = "enabled" if self.enable_reasoner else "disabled"
+            if self.model.startswith("MiniMax-M3") and self.enable_reasoner:
+                thinking_type = "adaptive"
+            else:
+                thinking_type = "enabled" if self.enable_reasoner else "disabled"
+            thinking_budget = 0 if thinking_type == "adaptive" else self.max_reasoning_tokens or 1024
             return AnthropicModelSettings(
                 max_output_tokens=self.max_tokens or 4096,
                 temperature=self.temperature,
-                thinking=AnthropicThinking(type=thinking_type, budget_tokens=self.max_reasoning_tokens or 1024),
+                thinking=AnthropicThinking(type=thinking_type, budget_tokens=thinking_budget),
                 verbosity=self.verbosity,
                 strict=self.strict,
             )
@@ -630,6 +634,20 @@ class LLMConfig(BaseModel):
                 config.put_inner_thoughts_in_kwargs = False
                 return config
 
+            if config.model_endpoint_type == "minimax":
+                if config.model.startswith("MiniMax-M2.7"):
+                    config.enable_reasoner = True
+                    config.put_inner_thoughts_in_kwargs = False
+                    if config.max_reasoning_tokens == 0:
+                        config.max_reasoning_tokens = 1024
+                    return config
+                if config.model.startswith("MiniMax-M3"):
+                    config.enable_reasoner = bool(reasoning)
+                    config.put_inner_thoughts_in_kwargs = False
+                    if not config.enable_reasoner:
+                        config.max_reasoning_tokens = 0
+                    return config
+
             # OpenRouter reasoning models: toggle honored
             if cls.is_openrouter_reasoning_model(config):
                 config.enable_reasoner = bool(reasoning)
@@ -712,6 +730,16 @@ class LLMConfig(BaseModel):
                 config.put_inner_thoughts_in_kwargs = False
             elif cls.is_openrouter_reasoning_model(config):
                 config.put_inner_thoughts_in_kwargs = False
+            elif config.model_endpoint_type == "minimax":
+                if config.model.startswith("MiniMax-M2.7"):
+                    config.put_inner_thoughts_in_kwargs = False
+                    config.enable_reasoner = True
+                    if config.max_reasoning_tokens == 0:
+                        config.max_reasoning_tokens = 1024
+                elif config.model.startswith("MiniMax-M3"):
+                    config.put_inner_thoughts_in_kwargs = False
+                    config.enable_reasoner = False
+                    config.max_reasoning_tokens = 0
             elif cls.is_openai_reasoning_model(config):
                 config.put_inner_thoughts_in_kwargs = False
                 if config.reasoning_effort is None:

@@ -144,21 +144,30 @@ async def test_minimax():
     provider = MiniMaxProvider(name="minimax")
     models = await provider.list_llm_models_async()
 
-    # Should have exactly 3 models: M2.1, M2.1-lightning, M2, M2.5, M2.7
-    assert len(models) == 5
+    # Should have exactly 6 models: M3, M2.1, M2.1-lightning, M2, M2.5, M2.7
+    assert len(models) == 6
 
     # Verify model properties
     model_names = {m.model for m in models}
+    assert "MiniMax-M3" in model_names
     assert "MiniMax-M2.1" in model_names
     assert "MiniMax-M2.1-lightning" in model_names
     assert "MiniMax-M2" in model_names
     assert "MiniMax-M2.5" in model_names
+    assert "MiniMax-M2.7" in model_names
 
     # Verify handle format
+    expected_context_windows = {
+        "MiniMax-M3": 1000000,
+        "MiniMax-M2.1": 200000,
+        "MiniMax-M2.1-lightning": 200000,
+        "MiniMax-M2": 200000,
+        "MiniMax-M2.5": 200000,
+        "MiniMax-M2.7": 204800,
+    }
     for model in models:
         assert model.handle == f"{provider.name}/{model.model}"
-        # All MiniMax models have 200K context window
-        assert model.context_window == 200000
+        assert model.context_window == expected_context_windows[model.model]
         # All MiniMax models have 128K max output
         assert model.max_tokens == 128000
         # MiniMax uses Anthropic-compatible API endpoint
@@ -444,6 +453,10 @@ async def test_provider_llm_models_consistency():
         ("google_vertex/gemini-2.5-flash", AgentType.letta_v1_agent, False, False, False, 0, None),
         ("google_vertex/gemini-2.5-pro", AgentType.letta_v1_agent, True, True, False, 1024, None),
         ("google_vertex/gemini-2.5-pro", AgentType.letta_v1_agent, False, True, False, 1024, None),
+        ("minimax/MiniMax-M3", AgentType.letta_v1_agent, True, True, False, 0, None),
+        ("minimax/MiniMax-M3", AgentType.letta_v1_agent, False, False, False, 0, None),
+        ("minimax/MiniMax-M2.7", AgentType.letta_v1_agent, True, True, False, 1024, None),
+        ("minimax/MiniMax-M2.7", AgentType.letta_v1_agent, False, True, False, 1024, None),
     ],
 )
 def test_reasoning_toggle_by_provider(

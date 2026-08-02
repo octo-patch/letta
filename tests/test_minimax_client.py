@@ -10,6 +10,7 @@ from letta.schemas.llm_config import LLMConfig
 
 # MiniMax API base URL
 MINIMAX_BASE_URL = "https://api.minimax.io/anthropic"
+MINIMAX_CN_BASE_URL = "https://api.minimaxi.com/anthropic"
 
 
 class TestMiniMaxClient:
@@ -30,14 +31,43 @@ class TestMiniMaxClient:
         assert self.client.is_reasoning_model(self.llm_config) is True
 
         # Test with different models
-        for model_name in ["MiniMax-M2.1", "MiniMax-M2.1-lightning", "MiniMax-M2"]:
+        for model_name, context_window in [
+            ("MiniMax-M3", 1000000),
+            ("MiniMax-M2.7", 204800),
+            ("MiniMax-M2.1", 200000),
+            ("MiniMax-M2.1-lightning", 200000),
+            ("MiniMax-M2", 200000),
+        ]:
             config = LLMConfig(
                 model=model_name,
                 model_endpoint_type="minimax",
                 model_endpoint=MINIMAX_BASE_URL,
-                context_window=200000,
+                context_window=context_window,
             )
             assert self.client.is_reasoning_model(config) is True
+
+    @pytest.mark.parametrize("base_url", [MINIMAX_BASE_URL, MINIMAX_CN_BASE_URL])
+    def test_build_request_data_uses_adaptive_thinking_for_m3(self, base_url):
+        """MiniMax-M3 should rewrite enabled thinking to adaptive thinking."""
+        llm_config = LLMConfig(
+            model="MiniMax-M3",
+            model_endpoint_type="minimax",
+            model_endpoint=base_url,
+            context_window=1000000,
+            enable_reasoner=True,
+        )
+
+        with patch.object(MiniMaxClient.__bases__[0], "build_request_data") as mock_parent:
+            mock_parent.return_value = {"model": "MiniMax-M3", "temperature": 1.0, "thinking": {"type": "enabled", "budget_tokens": 1024}}
+
+            result = self.client.build_request_data(
+                agent_type=AgentType.letta_v1_agent,
+                messages=[],
+                llm_config=llm_config,
+            )
+
+            assert result["thinking"]["type"] == "adaptive"
+            assert "budget_tokens" not in result["thinking"]
 
     def test_requires_auto_tool_choice(self):
         """MiniMax supports all tool choice modes."""
