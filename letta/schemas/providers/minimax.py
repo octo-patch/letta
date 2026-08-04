@@ -11,26 +11,31 @@ from letta.schemas.providers.base import Provider
 
 logger = get_logger(__name__)
 
+# Regional endpoints for the MiniMax Anthropic- and OpenAI-compatible APIs.
+# Global (international) and China (CN) regions use separate hosts.
+GLOBAL_EN_ANTHROPIC_BASE_URL = "https://api.minimax.io/anthropic"
+GLOBAL_EN_OPENAI_BASE_URL = "https://api.minimax.io/v1"
+CN_ZH_ANTHROPIC_BASE_URL = "https://api.minimaxi.com/anthropic"
+CN_ZH_OPENAI_BASE_URL = "https://api.minimaxi.com/v1"
+
 # MiniMax model specifications from official documentation
 # https://platform.minimax.io/docs/guides/models-intro
 MODEL_LIST = [
     {
-        "name": "MiniMax-M2.1",
-        "context_window": 200000,
+        "name": "MiniMax-M3",
+        "context_window": 1000000,
         "max_output": 128000,
-        "description": "Polyglot code mastery, precision code refactoring (~60 tps)",
+        "description": "Latest flagship model with 1M context window and multimodal input.",
+        "thinking_modes": ["adaptive", "disabled"],
+        "input_modalities": ["text", "image", "video"],
     },
     {
-        "name": "MiniMax-M2.1-lightning",
-        "context_window": 200000,
+        "name": "MiniMax-M2.7",
+        "context_window": 204800,
         "max_output": 128000,
-        "description": "Same performance as M2.1, significantly faster (~100 tps)",
-    },
-    {
-        "name": "MiniMax-M2",
-        "context_window": 200000,
-        "max_output": 128000,
-        "description": "Agentic capabilities, advanced reasoning",
+        "description": "Latest model.",
+        "thinking_modes": ["always_on"],
+        "input_modalities": ["text"],
     },
     {
         "name": "MiniMax-M2.5",
@@ -39,12 +44,32 @@ MODEL_LIST = [
         "description": "Peak Performance. Ultimate Value. Master the Complex",
     },
     {
-        "name": "MiniMax-M2.7",
+        "name": "MiniMax-M2",
         "context_window": 200000,
         "max_output": 128000,
-        "description": "Latest model.",
+        "description": "Agentic capabilities, advanced reasoning",
+    },
+    {
+        "name": "MiniMax-M2.1-lightning",
+        "context_window": 200000,
+        "max_output": 128000,
+        "description": "Same performance as M2.1, significantly faster (~100 tps)",
+    },
+    {
+        "name": "MiniMax-M2.1",
+        "context_window": 200000,
+        "max_output": 128000,
+        "description": "Polyglot code mastery, precision code refactoring (~60 tps)",
     },
 ]
+
+
+def get_model_metadata(model_name: str) -> dict | None:
+    """Return metadata for a MiniMax model by name, or None if unknown."""
+    for model in MODEL_LIST:
+        if model["name"] == model_name:
+            return model
+    return None
 
 
 class MiniMaxProvider(Provider):
@@ -60,7 +85,13 @@ class MiniMaxProvider(Provider):
     provider_type: Literal[ProviderType.minimax] = Field(ProviderType.minimax, description="The type of the provider.")
     provider_category: ProviderCategory = Field(ProviderCategory.base, description="The category of the provider (base or byok)")
     api_key: str | None = Field(None, description="API key for the MiniMax API.", deprecated=True)
-    base_url: str = Field("https://api.minimax.io/anthropic", description="Base URL for the MiniMax Anthropic-compatible API.")
+    base_url: str = Field(
+        GLOBAL_EN_ANTHROPIC_BASE_URL,
+        description=(
+            "Base URL for the MiniMax Anthropic-compatible API. "
+            f"Global: {GLOBAL_EN_ANTHROPIC_BASE_URL}; CN: {CN_ZH_ANTHROPIC_BASE_URL}."
+        ),
+    )
 
     async def check_api_key(self):
         """Check if the API key is valid by making a test request to the MiniMax API."""
@@ -85,7 +116,7 @@ class MiniMaxProvider(Provider):
 
     def get_model_context_window_size(self, model_name: str) -> int | None:
         """Get the context window size for a MiniMax model."""
-        # All current MiniMax models have 200K context window
+        # Context windows vary by model: MiniMax-M3 supports 1M tokens, M2.x models up to 204800
         for model in MODEL_LIST:
             if model["name"] == model_name:
                 return model["context_window"]

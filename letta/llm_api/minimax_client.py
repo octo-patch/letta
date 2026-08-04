@@ -11,6 +11,7 @@ from letta.otel.tracing import trace_method
 from letta.schemas.agent import AgentType
 from letta.schemas.llm_config import LLMConfig
 from letta.schemas.message import Message as PydanticMessage
+from letta.schemas.providers.minimax import get_model_metadata
 from letta.settings import model_settings
 
 logger = get_logger(__name__)
@@ -158,6 +159,14 @@ class MiniMaxClient(AnthropicClient):
                 data["temperature"] = 1.0  # Maximum valid value
                 logger.warning(f"[MiniMax] Temperature {temp} is invalid. Clamped to 1.0.")
 
+        # MiniMax-M3 uses adaptive thinking (no budget tokens) when thinking is enabled,
+        # while M2.x models use budget-based thinking.
+        if data.get("thinking") is not None:
+            model_name = llm_config.model.split("/", 1)[-1]
+            model_meta = get_model_metadata(model_name)
+            if model_meta and "adaptive" in model_meta.get("thinking_modes", []):
+                data["thinking"] = {"type": "adaptive"}
+
         # MiniMax ignores these Anthropic-specific parameters, but we can remove them
         # to avoid potential issues (they won't cause errors, just ignored)
         # Note: We don't remove them since MiniMax silently ignores them
@@ -166,10 +175,12 @@ class MiniMaxClient(AnthropicClient):
 
     def is_reasoning_model(self, llm_config: LLMConfig) -> bool:
         """
-        All MiniMax M2.x models support native interleaved thinking.
+        MiniMax models support native interleaved thinking.
 
-        Unlike Anthropic where only certain models (Claude 3.7+) support extended thinking,
-        all MiniMax models natively support thinking blocks without beta headers.
+        MiniMax-M3 supports adaptive or disabled thinking, while M2.x models keep
+        thinking always on. Unlike Anthropic where only certain models (Claude 3.7+)
+        support extended thinking, all MiniMax models natively support thinking
+        blocks without beta headers.
         """
         return True
 
