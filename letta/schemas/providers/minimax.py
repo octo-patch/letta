@@ -11,6 +11,9 @@ from letta.schemas.providers.base import Provider
 
 logger = get_logger(__name__)
 
+MINIMAX_GLOBAL_BASE_URL = "https://api.minimax.io/anthropic"
+MINIMAX_CN_BASE_URL = "https://api.minimaxi.com/anthropic"
+
 # MiniMax model specifications from official documentation
 # https://platform.minimax.io/docs/guides/models-intro
 MODEL_LIST = [
@@ -40,9 +43,15 @@ MODEL_LIST = [
     },
     {
         "name": "MiniMax-M2.7",
-        "context_window": 200000,
+        "context_window": 204800,
         "max_output": 128000,
-        "description": "Latest model.",
+        "description": "Agentic model with always-on reasoning",
+    },
+    {
+        "name": "MiniMax-M3",
+        "context_window": 1000000,
+        "max_output": 128000,
+        "description": "Multimodal model with adaptive thinking",
     },
 ]
 
@@ -60,7 +69,7 @@ class MiniMaxProvider(Provider):
     provider_type: Literal[ProviderType.minimax] = Field(ProviderType.minimax, description="The type of the provider.")
     provider_category: ProviderCategory = Field(ProviderCategory.base, description="The category of the provider (base or byok)")
     api_key: str | None = Field(None, description="API key for the MiniMax API.", deprecated=True)
-    base_url: str = Field("https://api.minimax.io/anthropic", description="Base URL for the MiniMax Anthropic-compatible API.")
+    base_url: str = Field(MINIMAX_GLOBAL_BASE_URL, description="Base URL for the MiniMax Anthropic-compatible API.")
 
     async def check_api_key(self):
         """Check if the API key is valid by making a test request to the MiniMax API."""
@@ -85,7 +94,6 @@ class MiniMaxProvider(Provider):
 
     def get_model_context_window_size(self, model_name: str) -> int | None:
         """Get the context window size for a MiniMax model."""
-        # All current MiniMax models have 200K context window
         for model in MODEL_LIST:
             if model["name"] == model_name:
                 return model["context_window"]

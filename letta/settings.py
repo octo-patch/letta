@@ -169,6 +169,10 @@ class ModelSettings(BaseSettings):
 
     # minimax
     minimax_api_key: Optional[str] = None
+    minimax_base_url: str = Field(
+        default="https://api.minimax.io/anthropic",
+        validation_alias=AliasChoices("MINIMAX_BASE_URL", "MINIMAX_API_BASE"),
+    )
 
     # Bedrock
     aws_access_key_id: Optional[str] = None

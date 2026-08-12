@@ -30,7 +30,7 @@ class TestMiniMaxClient:
         assert self.client.is_reasoning_model(self.llm_config) is True
 
         # Test with different models
-        for model_name in ["MiniMax-M2.1", "MiniMax-M2.1-lightning", "MiniMax-M2"]:
+        for model_name in ["MiniMax-M2.1", "MiniMax-M2.1-lightning", "MiniMax-M2", "MiniMax-M2.7", "MiniMax-M3"]:
             config = LLMConfig(
                 model=model_name,
                 model_endpoint_type="minimax",
@@ -195,6 +195,41 @@ class TestMiniMaxClientTemperatureClamping:
             )
 
             assert result["temperature"] == 0.7
+
+
+class TestMiniMaxM3Thinking:
+    """Tests for MiniMax-M3 adaptive thinking."""
+
+    def setup_method(self):
+        self.client = MiniMaxClient(put_inner_thoughts_first=True)
+
+    @pytest.mark.parametrize(
+        ("enable_reasoner", "parent_thinking", "expected_thinking"),
+        [
+            (True, {"type": "enabled", "budget_tokens": 1024}, {"type": "adaptive"}),
+            (False, None, {"type": "disabled"}),
+        ],
+    )
+    def test_m3_thinking_behavior(self, enable_reasoner, parent_thinking, expected_thinking):
+        config = LLMConfig(
+            model="MiniMax-M3",
+            model_endpoint_type="minimax",
+            model_endpoint=MINIMAX_BASE_URL,
+            context_window=1000000,
+            enable_reasoner=enable_reasoner,
+        )
+        parent_data = {"model": "MiniMax-M3", "temperature": 1.0}
+        if parent_thinking is not None:
+            parent_data["thinking"] = parent_thinking
+
+        with patch.object(MiniMaxClient.__bases__[0], "build_request_data", return_value=parent_data):
+            result = self.client.build_request_data(
+                agent_type=AgentType.letta_v1_agent,
+                messages=[],
+                llm_config=config,
+            )
+
+        assert result.get("thinking") == expected_thinking
 
 
 class TestMiniMaxClientUsesNonBetaAPI:
